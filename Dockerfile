@@ -25,7 +25,9 @@ RUN set -eux; \
     --prefix=/usr \
     --sysconfdir=/etc \
     --localstatedir=/var \
+    --libexecdir=/usr/lib/squid \
     --with-default-user=squid \
+    --with-openssl \
     && make -j"$(nproc)" \
     && make install
 
@@ -41,6 +43,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy installed Squid artifacts from builder
 COPY --from=builder /usr /usr
+# Provide MIME table at default path expected by this build (--sysconfdir=/etc)
+COPY src/mime.conf.default /etc/mime.conf
 
 # Create squid user and runtime directories with configurable UID/GID and
 # set ownership at build time. Mounted volumes (PV/PVC) still require
@@ -49,6 +53,7 @@ RUN set -eux; \
     groupadd -g "$SQUID_GID" squid || true; \
     useradd -u "$SQUID_UID" -g "$SQUID_GID" -M -s /sbin/nologin squid || true; \
     mkdir -p /var/cache/squid /var/log/squid /run/squid /etc/squid; \
+    ln -sf /etc/mime.conf /etc/squid/mime.conf; \
     chown -R "$SQUID_UID":"$SQUID_GID" /var/cache/squid /var/log/squid /run/squid /etc/squid; \
     chmod -R g+rwX /var/cache/squid /var/log/squid /run/squid /etc/squid
 
